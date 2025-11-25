@@ -424,4 +424,142 @@ class ApiService {
   String getDirectRecommendationCallbackUrl() {
     return 'https://sahtech-app.example/api/recommendations/callback';
   }
+
+  // ===== Favorite Nutritionists =====
+
+  /// Add a nutritionist to user's favorites
+  Future<bool> addFavoriteNutritionist(
+      String userId, String nutritionistId) async {
+    try {
+      final token = await _getToken();
+      if (token == null) {
+        print('No auth token available');
+        return false;
+      }
+
+      print(
+          'DEBUG: Adding to favorites - userId: $userId, nutritionistId: $nutritionistId');
+      print('DEBUG: Token available: ${token.substring(0, 20)}...');
+
+      final String url =
+          '${config.baseUrl}/Utilisateurs/$userId/favorites/$nutritionistId';
+      print('DEBUG: Request URL: $url');
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      print('DEBUG: Response status: ${response.statusCode}');
+      print('DEBUG: Response body: ${response.body}');
+      print('DEBUG: Response body length: ${response.body.length}');
+      print('DEBUG: Response headers: ${response.headers}');
+
+      if (response.statusCode == 200) {
+        print('Successfully added nutritionist to favorites');
+        return true;
+      } else {
+        print(
+            'Failed to add to favorites: ${response.statusCode} - ${response.body}');
+        if (response.statusCode == 403) {
+          print(
+              'DEBUG: 403 Forbidden - Authorization failed. Check backend logs for details.');
+          print(
+              'DEBUG: This usually means the JWT token user ID does not match the userId in the URL');
+        }
+        return false;
+      }
+    } catch (e) {
+      print('Error adding nutritionist to favorites: $e');
+      return false;
+    }
+  }
+
+  /// Remove a nutritionist from user's favorites
+  Future<bool> removeFavoriteNutritionist(
+      String userId, String nutritionistId) async {
+    try {
+      final token = await _getToken();
+      if (token == null) {
+        print('No auth token available');
+        return false;
+      }
+
+      final String url =
+          '${config.baseUrl}/Utilisateurs/$userId/favorites/$nutritionistId';
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        print('Successfully removed nutritionist from favorites');
+        return true;
+      } else {
+        print(
+            'Failed to remove from favorites: ${response.statusCode} - ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('Error removing nutritionist from favorites: $e');
+      return false;
+    }
+  }
+
+  /// Get all favorite nutritionists for a user
+  Future<List<NutritionisteModel>> getFavoriteNutritionists(
+      String userId) async {
+    try {
+      final token = await _getToken();
+      if (token == null) {
+        print('No auth token available');
+        return [];
+      }
+
+      final String url = '${config.baseUrl}/Utilisateurs/$userId/favorites';
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final List<dynamic> favoritesJson = data['favorites'] ?? [];
+        final List<NutritionisteModel> favorites = favoritesJson
+            .map((json) => NutritionisteModel.fromMap(json))
+            .toList();
+        print(
+            'Successfully fetched ${favorites.length} favorite nutritionists');
+        return favorites;
+      } else {
+        print('Failed to fetch favorites: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('Error fetching favorite nutritionists: $e');
+      return [];
+    }
+  }
+
+  /// Check if a nutritionist is in user's favorites
+  Future<bool> isFavoriteNutritionist(
+      String userId, String nutritionistId) async {
+    try {
+      final favorites = await getFavoriteNutritionists(userId);
+      return favorites
+          .any((n) => n.userId == nutritionistId || n.id == nutritionistId);
+    } catch (e) {
+      print('Error checking if nutritionist is favorite: $e');
+      return false;
+    }
+  }
 }

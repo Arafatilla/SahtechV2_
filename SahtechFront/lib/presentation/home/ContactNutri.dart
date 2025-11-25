@@ -232,8 +232,21 @@ class _ContactNutriState extends State<ContactNutri> {
   Future<void> _loadNutritionists() async {
     setState(() => _isLoading = true);
     try {
-      // Create empty list for now since we've removed the mock data
-      final List<NutritionisteModel> nutritionists = [];
+      // Load favorite nutritionists from API
+      List<NutritionisteModel> nutritionists = [];
+
+      if (widget.userData != null &&
+          widget.userData!.userId != null &&
+          widget.userData!.userId!.isNotEmpty) {
+        try {
+          final ApiService apiService = ApiService();
+          nutritionists = await apiService
+              .getFavoriteNutritionists(widget.userData!.userId!);
+          print('Loaded ${nutritionists.length} favorite nutritionists');
+        } catch (e) {
+          print('Error loading favorite nutritionists: $e');
+        }
+      }
 
       if (mounted) {
         setState(() {
@@ -247,7 +260,6 @@ class _ContactNutriState extends State<ContactNutri> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          // Create empty list since we've removed the mock data
           _nutritionists = [];
           _filteredNutritionists = _nutritionists;
         });

@@ -6,13 +6,15 @@ import 'package:sahtech/core/utils/models/nutritioniste_model.dart';
 class NutritionistCard extends StatelessWidget {
   final NutritionisteModel nutritionist;
   final VoidCallback onCallTap;
-  final VoidCallback onDetailsTap;
+  final VoidCallback onSaveTap;
+  final bool isFavorite;
 
   const NutritionistCard({
     Key? key,
     required this.nutritionist,
     required this.onCallTap,
-    required this.onDetailsTap,
+    required this.onSaveTap,
+    this.isFavorite = false,
   }) : super(key: key);
 
   @override
@@ -45,7 +47,9 @@ class NutritionistCard extends StatelessWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12.r),
               child: Image.network(
-                nutritionist.photoUrl ?? nutritionist.profileImageUrl ?? 'https://picsum.photos/200',
+                nutritionist.photoUrl ??
+                    nutritionist.profileImageUrl ??
+                    'https://picsum.photos/200',
                 width: 80.w,
                 height: 98.h,
                 fit: BoxFit.cover,
@@ -135,7 +139,9 @@ class NutritionistCard extends StatelessWidget {
                       SizedBox(width: 2.w),
                       Expanded(
                         child: Text(
-                          nutritionist.address ?? nutritionist.cabinetAddress ?? 'Location',
+                          nutritionist.address ??
+                              nutritionist.cabinetAddress ??
+                              'Location',
                           style: TextStyle(
                             fontSize: 11.sp,
                             color: Colors.grey[600],
@@ -172,9 +178,9 @@ class NutritionistCard extends StatelessWidget {
 
                       SizedBox(width: 8.w),
 
-                      // Arrow button
+                      // Save button (bookmark)
                       InkWell(
-                        onTap: onDetailsTap,
+                        onTap: onSaveTap,
                         child: Container(
                           padding: EdgeInsets.all(5.w),
                           decoration: BoxDecoration(
@@ -182,7 +188,9 @@ class NutritionistCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Icon(
-                            Icons.bookmark_outline,
+                            isFavorite
+                                ? Icons.bookmark
+                                : Icons.bookmark_outline,
                             color: Colors.black,
                             size: 14.sp,
                           ),

@@ -41,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<AdModel> _ads = [];
   int _scannedProductsCount = 0;
   bool _isLoading = true;
+  Set<String> _favoriteNutritionistIds = {}; // Track favorite nutritionist IDs
 
   // API service
   final ApiService _apiService = ApiService();
@@ -159,6 +160,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Debug print the products count
           print('DEBUG: Products loaded for user: $productCount');
+
+          // Load favorite nutritionist IDs
+          final favorites = await _apiService
+              .getFavoriteNutritionists(widget.userData.userId!);
+          _favoriteNutritionistIds = favorites
+              .map((n) => n.userId ?? n.id ?? '')
+              .where((id) => id.isNotEmpty)
+              .toSet();
+          print(
+              'DEBUG: Loaded ${_favoriteNutritionistIds.length} favorite nutritionists');
         } catch (productError) {
           print('Error loading user products: $productError');
           // Continue with 0 products rather than failing the whole screen
@@ -355,6 +366,88 @@ class _HomeScreenState extends State<HomeScreen> {
       // Handle any errors
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Erreur lors de l\'appel: $e'),
+        backgroundColor: Colors.red,
+      ));
+    }
+  }
+
+  // Save/unsave nutritionist to favorites
+  void _saveNutritionist(NutritionisteModel nutritionist) async {
+    final userId = widget.userData.userId;
+    if (userId == null || userId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Erreur: ID utilisateur non disponible'),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
+    final nutritionistId = nutritionist.userId ?? nutritionist.id;
+    if (nutritionistId == null || nutritionistId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Erreur: ID nutritionniste non disponible'),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
+    // Check if already favorited
+    final isFavorite = _favoriteNutritionistIds.contains(nutritionistId);
+
+    try {
+      bool success;
+      if (isFavorite) {
+        // Remove from favorites
+        success = await _apiService.removeFavoriteNutritionist(
+            userId, nutritionistId);
+        if (success) {
+          setState(() {
+            _favoriteNutritionistIds.remove(nutritionistId);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('${nutritionist.name} retiré des favoris'),
+            backgroundColor: AppColors.lightTeal,
+          ));
+        }
+      } else {
+        // Add to favorites
+        success =
+            await _apiService.addFavoriteNutritionist(userId, nutritionistId);
+        if (success) {
+          setState(() {
+            _favoriteNutritionistIds.add(nutritionistId);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('${nutritionist.name} ajouté aux favoris'),
+            backgroundColor: AppColors.lightTeal,
+            action: SnackBarAction(
+              label: 'Voir',
+              textColor: Colors.white,
+              onPressed: () {
+                // Navigate to favorites screen (ContactNutri)
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ContactNutri(userData: widget.userData),
+                  ),
+                );
+              },
+            ),
+          ));
+        }
+      }
+
+      if (!success) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Erreur lors de la modification des favoris'),
+          backgroundColor: Colors.red,
+        ));
+      }
+    } catch (e) {
+      print('Error saving nutritionist: $e');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Erreur: $e'),
         backgroundColor: Colors.red,
       ));
     }
@@ -731,13 +824,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                 itemCount: _nutritionists.length,
                                 itemBuilder: (context, index) {
                                   final nutritionist = _nutritionists[index];
+                                  final nutritionistId = nutritionist.userId ??
+                                      nutritionist.id ??
+                                      '';
+                                  final isFavorite = _favoriteNutritionistIds
+                                      .contains(nutritionistId);
+
                                   return NutritionistCard(
                                     nutritionist: nutritionist,
                                     onCallTap: () =>
                                         _callNutritionist(nutritionist),
-                                    onDetailsTap: () =>
-                                        _navigateToNutritionistDetails(
-                                            nutritionist),
+                                    onSaveTap: () =>
+                                        _saveNutritionist(nutritionist),
+                                    isFavorite: isFavorite,
                                   );
                                 },
                               ),
